@@ -2,14 +2,16 @@ const { Client } = require("@notionhq/client")
 const { NotionToMarkdown } = require("notion-to-md");
 const fs = require('fs');
 
+if (process.env.NOTION_TOKEN == undefined) {
+  console.log("You must specify a token in the NOTION_TOKEN env var");
+	return;
+}
+
 // Initializing a client
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 });
-if (notion == undefined) {
-  console.log("You must specify a token in the NOTION_TOKEN env var");
-	return;
-}
+
 
 if (process.argv.length < 3) {
   console.log("You must specify the output directory for the generated markdown files");
