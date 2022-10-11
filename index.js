@@ -8,7 +8,6 @@ if (process.env.NOTION_TOKEN == undefined) {
 }
 const notion_token = process.env.NOTION_TOKEN;
 
-
 if (process.env.NOTION_BLOG_DATABASE_ID == undefined) {
   console.log("You must specify a blog database in the NOTION_BLOG_DATABASE_ID env var");
   return;
@@ -21,15 +20,10 @@ if (process.argv.length < 3) {
 }
 const output_dir = process.argv[2]
 
-
-
-// Initializing a client
 const notion = new Client({
   auth: notion_token,
 });
 
-
-// passing notion client to the option
 const n2m = new NotionToMarkdown({ notionClient: notion });
 
 (async () => {
