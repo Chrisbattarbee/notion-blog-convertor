@@ -6,18 +6,28 @@ if (process.env.NOTION_TOKEN == undefined) {
   console.log("You must specify a token in the NOTION_TOKEN env var");
   return;
 }
+const notion_token = process.env.NOTION_TOKEN;
 
-// Initializing a client
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-});
 
+if (process.env.NOTION_BLOG_DATABASE_ID == undefined) {
+  console.log("You must specify a blog database in the NOTION_BLOG_DATABASE_ID env var");
+  return;
+}
+const notion_blog_database_id = process.env.NOTION_BLOG_DATABASE_ID;
 
 if (process.argv.length < 3) {
   console.log("You must specify the output directory for the generated markdown files");
   return;
 }
 const output_dir = process.argv[2]
+
+
+
+// Initializing a client
+const notion = new Client({
+  auth: notion_token,
+});
+
 
 // passing notion client to the option
 const n2m = new NotionToMarkdown({ notionClient: notion });
