@@ -42,6 +42,15 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
     console.log("Processing post: " + title);
     const mdblocks = await n2m.pageToMarkdown(pages.results[i].id);
     const mdString = n2m.toMarkdownString(mdblocks);
+		const mdStringWithTags = 
+`
+---
+title: ` + title + `
+author: Chris Battarbee
+annotations: false
+---
+
+`
 
     //writing to file
     fs.writeFile(output_dir + title.split(" ").join("_").toLowerCase() + ".md", mdString, (err) => {
