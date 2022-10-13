@@ -50,10 +50,10 @@ author: Chris Battarbee
 annotations: false
 ---
 
-`
+` + mdString;
 
     //writing to file
-    fs.writeFile(output_dir + title.split(" ").join("_").toLowerCase() + ".md", mdString, (err) => {
+    fs.writeFile(output_dir + title.split(" ").join("_").toLowerCase() + ".md", mdStringWithTags, (err) => {
       if (err != null) {
         console.log(err);
       }
