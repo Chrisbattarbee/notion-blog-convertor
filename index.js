@@ -14,6 +14,12 @@ if (process.env.NOTION_BLOG_DATABASE_ID == undefined) {
 }
 const notion_blog_database_id = process.env.NOTION_BLOG_DATABASE_ID;
 
+var pull_unpublished_posts = false;
+if (process.env.NOTION_BLOG_PULL_UNPUBLISHED_POSTS != undefined) {
+  console.log("Will pull unpublished posts");
+  pull_unpublished_posts = true;
+}
+
 if (process.argv.length < 3) {
   console.log("You must specify the output directory for the generated markdown files");
   return;
@@ -27,23 +33,28 @@ const notion = new Client({
 const n2m = new NotionToMarkdown({ notionClient: notion });
 
 (async () => {
-  const pages = await notion.databases.query({
-  database_id: "8d8e3adab04240cf9509d619b43178d7",
-    filter: {
-      property: "Publish",
-      checkbox: {
-        equals: true
-      },
-    },
-  });
-
+  var pages;
+  if (pull_unpublished_posts) {
+    pages = await notion.databases.query({
+      database_id: "8d8e3adab04240cf9509d619b43178d7" });
+  } else {
+    pages = await notion.databases.query({
+      database_id: "8d8e3adab04240cf9509d619b43178d7",
+        filter: {
+          property: "Publish",
+          checkbox: {
+            equals: true
+          },
+        },
+      });
+  }
   for (let i = 0; i < pages.results.length; i ++) {
     const title = pages.results[i].properties.Name.title[0].plain_text;
     console.log("Processing post: " + title);
-		const urlFriendlyTitle = title.split(" ").join("_").toLowerCase();
+    const urlFriendlyTitle = title.split(" ").join("_").toLowerCase();
 
-		const entry_date = pages.results[i].properties.EntryDate.date.start
-		const tags = pages.results[i].properties.Tags.multi_select.map(x => x.name);
+    const entry_date = pages.results[i].properties.EntryDate.date.start
+    const tags = pages.results[i].properties.Tags.multi_select.map(x => x.name);
     const description = `"` + pages.results[i].properties.Description.rich_text[0].plain_text + `"`; // Quotes deal with newlines in the rich text
 
     const mdblocks = await n2m.pageToMarkdown(pages.results[i].id);
@@ -55,7 +66,7 @@ tags: ` + tags.map(tag => `\n  - ` + tag)
 
 : ``)
 
-		const mdStringWithTags = 
+    const mdStringWithTags = 
 `
 ---
 title: ` + title + `
@@ -73,7 +84,7 @@ summary: ` + description + `
 ` + mdString;
 
     //writing to file
-		if (!fs.existsSync(output_dir)){
+    if (!fs.existsSync(output_dir)){
       fs.mkdirSync(output_dir, { recursive: true });
     }
     fs.writeFile(output_dir + urlFriendlyTitle + ".md", mdStringWithTags, (err) => {
