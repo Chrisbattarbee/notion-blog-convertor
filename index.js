@@ -59,10 +59,11 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
 
     const mdblocks = await n2m.pageToMarkdown(pages.results[i].id);
     const mdString = n2m.toMarkdownString(mdblocks);
+		console.log(tags);
 
     const tagString = (tags.length > 0 ?
 `
-tags: ` + tags.map(tag => `\n  - ` + tag)
+tags: ` + tags.map(tag => `\n  - ` + tag).join("")
 
 : ``)
 
