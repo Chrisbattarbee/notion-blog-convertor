@@ -73,6 +73,9 @@ summary: ` + description + `
 ` + mdString;
 
     //writing to file
+		if (!fs.existsSync(output_dir)){
+      fs.mkdirSync(output_dir, { recursive: true });
+    }
     fs.writeFile(output_dir + urlFriendlyTitle + ".md", mdStringWithTags, (err) => {
       if (err != null) {
         console.log(err);
