@@ -40,20 +40,40 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
   for (let i = 0; i < pages.results.length; i ++) {
     const title = pages.results[i].properties.Name.title[0].plain_text;
     console.log("Processing post: " + title);
+		const urlFriendlyTitle = title.split(" ").join("_").toLowerCase();
+
+		const entry_date = pages.results[i].properties.EntryDate.date.start
+		const tags = pages.results[i].properties.Tags.multi_select.map(x => x.name);
+    const description = `"` + pages.results[i].properties.Description.rich_text[0].plain_text + `"`; // Quotes deal with newlines in the rich text
+
     const mdblocks = await n2m.pageToMarkdown(pages.results[i].id);
     const mdString = n2m.toMarkdownString(mdblocks);
+
+    const tagString = (tags.length > 0 ?
+`
+tags: ` + tags.map(tag => `\n  - ` + tag)
+
+: ``)
+
 		const mdStringWithTags = 
 `
 ---
 title: ` + title + `
 author: Chris Battarbee
 annotations: false
+date: ` + entry_date +
+tagString
++
+`
+url: ` + urlFriendlyTitle  + `
+description: ` + description + `
+summary: ` + description + `
 ---
 
 ` + mdString;
 
     //writing to file
-    fs.writeFile(output_dir + title.split(" ").join("_").toLowerCase() + ".md", mdStringWithTags, (err) => {
+    fs.writeFile(output_dir + urlFriendlyTitle + ".md", mdStringWithTags, (err) => {
       if (err != null) {
         console.log(err);
       }
