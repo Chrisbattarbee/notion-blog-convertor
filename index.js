@@ -1,6 +1,9 @@
 const { Client } = require("@notionhq/client")
 const { NotionToMarkdown } = require("notion-to-md");
 const fs = require('fs');
+const https = require('https')
+const url = require("url");
+const path = require("path");
 
 if (process.env.NOTION_TOKEN == undefined) {
   console.log("You must specify a token in the NOTION_TOKEN env var");
@@ -13,6 +16,18 @@ if (process.env.NOTION_BLOG_DATABASE_ID == undefined) {
   return;
 }
 const notion_blog_database_id = process.env.NOTION_BLOG_DATABASE_ID;
+
+if (process.env.NOTION_BLOG_IMAGE_OUTPUT_DIR == undefined) {
+  console.log("You must specify an image output directory in the NOTION_BLOG_IMAGE_OUTPUT_DIR env var");
+  return;
+}
+const notion_blog_image_output_dir = process.env.NOTION_BLOG_IMAGE_OUTPUT_DIR;
+
+if (process.env.NOTION_BLOG_IMAGE_ROOT_PATH == undefined) {
+  console.log("You must specify an image root path in the NOTION_BLOG_IMAGE_OUTPUT_DIR env var");
+  return;
+}
+const notion_blog_image_root_path = process.env.NOTION_BLOG_IMAGE_ROOT_PATH;
 
 var pull_unpublished_posts = false;
 if (process.env.NOTION_BLOG_PULL_UNPUBLISHED_POSTS != undefined) {
@@ -31,6 +46,37 @@ const notion = new Client({
 });
 
 const n2m = new NotionToMarkdown({ notionClient: notion });
+
+// We want to download images and copy them to the image directory of the site
+// so we can serve them ourselves and not point at notion s3 buckets.
+// This has the advantage of being quicker to load and not prone to api rate limiting
+n2m.setCustomTransformer('image', async (block) => {
+  let blockContent = block.image;
+  const imageCaptionPlain = blockContent.caption
+    .map((item) => item.plain_text)
+    .join("");
+  const imageType = blockContent.type;
+	
+	var imageUrl;
+  if (imageType === "external") {
+    imageUrl = blockContent.external.url;
+	}
+  if (imageType === "file") {
+    imageUrl = blockContent.file.url;
+	}
+
+	const imageOutputDir = notion_blog_image_output_dir;
+  if (!fs.existsSync(imageOutputDir)){
+    fs.mkdirSync(imageOutputDir, { recursive: true });
+  }
+
+	const imageName = path.basename(url.parse(imageUrl).pathname);
+	const imagePath = imageOutputDir + imageName
+	// Download the image
+  https.get(imageUrl, resp => resp.pipe(fs.createWriteStream(imagePath)));
+	return `![${imageCaptionPlain}](${notion_blog_image_root_path}${imageName})`;
+});
+
 
 (async () => {
   var pages;
@@ -54,26 +100,28 @@ const n2m = new NotionToMarkdown({ notionClient: notion });
     const urlFriendlyTitle = title.split(" ").join("_").toLowerCase();
 
     const entry_date = pages.results[i].properties.EntryDate.date.start
-    const tags = pages.results[i].properties.Tags.multi_select.map(x => x.name);
+		console.log("  Entry Date: " + entry_date);
+
     const description = `"` + pages.results[i].properties.Description.rich_text[0].plain_text + `"`; // Quotes deal with newlines in the rich text
+		console.log("  Description: " + description);
+    
+
+    const tags = pages.results[i].properties.Tags.multi_select.map(x => x.name);
+    const tagString = (tags.length > 0 ?
+      `tags: ` + tags.map(tag => `\n  - ` + tag).join("")
+                      : ``)
+    console.log("  " + tagString);
 
     const mdblocks = await n2m.pageToMarkdown(pages.results[i].id);
     const mdString = n2m.toMarkdownString(mdblocks);
-		console.log(tags);
-
-    const tagString = (tags.length > 0 ?
-`
-tags: ` + tags.map(tag => `\n  - ` + tag).join("")
-
-: ``)
-
-    const mdStringWithTags = 
+    const mdStringWithFrontMatter = 
 `
 ---
 title: ` + title + `
 author: Chris Battarbee
 annotations: false
-date: ` + entry_date +
+date: ` + entry_date + `
+` +
 tagString
 +
 `
@@ -88,7 +136,7 @@ summary: ` + description + `
     if (!fs.existsSync(output_dir)){
       fs.mkdirSync(output_dir, { recursive: true });
     }
-    fs.writeFile(output_dir + urlFriendlyTitle + ".md", mdStringWithTags, (err) => {
+    fs.writeFile(output_dir + urlFriendlyTitle + ".md", mdStringWithFrontMatter, (err) => {
       if (err != null) {
         console.log(err);
       }
